@@ -14,8 +14,9 @@ type Action struct {
 
 // MarshalYAML converts the action back to a YAML representation
 // install:
-//   fabric:
-//     ...
+//
+//	fabric:
+//	  ...
 func (a Action) MarshalYAML() (interface{}, error) {
 	return map[string]interface{}{a.Name: a.Steps}, nil
 }
@@ -66,13 +67,16 @@ type Actions []Action
 // UnmarshalYAML takes chunks of a porter.yaml file associated with this mixin
 // and populates it on the current action set.
 // install:
-//   fabric:
-//     ...
-//   fabric:
-//     ...
+//
+//	fabric:
+//	  ...
+//	fabric:
+//	  ...
+//
 // upgrade:
-//   fabric:
-//     ...
+//
+//	fabric:
+//	  ...
 func (a *Actions) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	results, err := builder.UnmarshalAction(unmarshal, Action{})
 	if err != nil {
@@ -96,23 +100,21 @@ var _ builder.ExecutableStep = Instruction{}
 var _ builder.StepWithOutputs = Instruction{}
 
 type Instruction struct {
-	Name        string   `yaml:"name"`
-	Description string   `yaml:"description"`
-	WorkingDir  string   `yaml:"dir,omitempty"`
-	Arguments   []string `yaml:"arguments,omitempty"`
-
-	// Useful when the CLI you are calling wants some arguments to come after flags
-	// Arguments are passed first, then Flags, then SuffixArguments.
-	SuffixArguments []string `yaml:"suffix-arguments,omitempty"`
-
-	Flags          builder.Flags `yaml:"flags,omitempty"`
-	Outputs        []Output      `yaml:"outputs,omitempty"`
-	SuppressOutput bool          `yaml:"suppress-output,omitempty"`
-
-	// Allow the user to ignore some errors
-	// Adds the ignoreError functionality from the exec mixin
+	Outputs        []Output `yaml:"outputs,omitempty"`
+	SuppressOutput bool     `yaml:"suppress-output,omitempty"`
 	// https://release-v1.porter.sh/mixins/exec/#ignore-error
 	builder.IgnoreErrorHandler `yaml:"ignoreError,omitempty"`
+	FabricFields               `yaml:",inline"`
+}
+type FabricFields struct {
+	Token       string `yaml:"token"`
+	DisplayName string `yaml:"displayName,omitempty"`
+	Type        string `yaml:"type,omitempty"`
+	Description string `yaml:"description,omitempty"`
+	CapacityId  string `yaml:"capacityId,omitempty"`
+	WorkspaceId string `yaml:"workspaceid,omitempty"`
+	ItemId      string `yaml:"itemid,omitempty"`
+	Definition  string `yaml:"definition,omitempty"`
 }
 
 func (s Instruction) GetCommand() string {
@@ -120,19 +122,19 @@ func (s Instruction) GetCommand() string {
 }
 
 func (s Instruction) GetWorkingDir() string {
-	return s.WorkingDir
+	return ""
 }
 
 func (s Instruction) GetArguments() []string {
-	return s.Arguments
+	return nil
 }
 
 func (s Instruction) GetSuffixArguments() []string {
-	return s.SuffixArguments
+	return nil
 }
 
 func (s Instruction) GetFlags() builder.Flags {
-	return s.Flags
+	return nil
 }
 
 func (s Instruction) SuppressesOutput() bool {
@@ -154,12 +156,14 @@ var _ builder.OutputRegex = Output{}
 
 type Output struct {
 	Name string `yaml:"name"`
+	Key  string `yaml:"key"`
 
 	// See https://porter.sh/mixins/exec/#outputs
 	// TODO: If your mixin doesn't support these output types, you can remove these and the interface assertions above, and from #/definitions/outputs in schema.json
-	JsonPath string `yaml:"jsonPath,omitempty"`
-	FilePath string `yaml:"path,omitempty"`
-	Regex    string `yaml:"regex,omitempty"`
+	// JsonPath string `yaml:"jsonPath,omitempty"`
+	// FilePath string `yaml:"path,omitempty"`
+	// Regex    string `yaml:"regex,omitempty"`
+
 }
 
 func (o Output) GetName() string {
@@ -167,13 +171,13 @@ func (o Output) GetName() string {
 }
 
 func (o Output) GetJsonPath() string {
-	return o.JsonPath
+	return ""
 }
 
 func (o Output) GetFilePath() string {
-	return o.FilePath
+	return ""
 }
 
 func (o Output) GetRegex() string {
-	return o.Regex
+	return ""
 }

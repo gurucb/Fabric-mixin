@@ -2,8 +2,14 @@ package fabric
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
 
 	"get.porter.sh/porter/pkg/exec/builder"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -17,11 +23,79 @@ func (m *Mixin) loadAction(ctx context.Context) (*Action, error) {
 }
 
 func (m *Mixin) Install(ctx context.Context) error {
+	fmt.Println(m.Out, "Strating deplyoing of fabric artifacts")
 	action, err := m.loadAction(ctx)
 	if err != nil {
 		return err
 	}
 
-	_, err = builder.ExecuteSingleStepAction(ctx, m.RuntimeConfig, action)
+	filepath := "/app/ubuntu.16.04-x64"
+	if _, err := os.Stat(filepath + "/Microsoft.Fabric.Provisioning.Client"); os.IsNotExist(err) {
+		fmt.Println("File does not exist")
+		return err
+	}
+
+	var cmd *exec.Cmd
+
+	if action.Steps[0].Type == "Workspace" || action.Steps[0].Type == "" {
+		payload := make(map[string]interface{})
+		payload["displayName"] = action.Steps[0].DisplayName
+		payload["description"] = action.Steps[0].Description
+		payload["capacityId"] = action.Steps[0].CapacityId
+
+		jsonString, err := json.Marshal(payload)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+		cmd = exec.Command(filepath+"/Microsoft.Fabric.Provisioning.Client", "create", "--token", action.Steps[0].Token, "--payload", string(jsonString))
+	} else {
+		fmt.Println("here")
+		fmt.Println(action.Steps[0].DisplayName, action.Steps[0].Type, action.Steps[0].Description, action.Steps[0].WorkspaceId)
+		payload := make(map[string]interface{})
+		payload["displayName"] = action.Steps[0].DisplayName
+		payload["type"] = action.Steps[0].Type
+		payload["description"] = action.Steps[0].Description
+		payload["workspaceId"] = action.Steps[0].WorkspaceId
+		jsonString, err := json.Marshal(payload)
+		fmt.Println("ok")
+		if err != nil {
+			fmt.Println(err)
+		}
+		cmd = exec.Command(filepath+"/Microsoft.Fabric.Provisioning.Client", "createItem", "--token", action.Steps[0].Token, "--payload", string(jsonString))
+		fmt.Println("okk")
+	}
+	fmt.Println(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return err
+	}
+	fmt.Println(string(output))
+	response := strings.SplitAfter(string(output), "Microsoft.Fabric.Provisioning.Client[0]")
+	if len(response) >= 3 {
+		strResp := response[2]
+		subResp1 := strings.SplitAfter(strResp, "\"id\":\"")
+		if len(subResp1) >= 2 {
+			subStr1 := subResp1[1]
+			str2 := strings.Split(subStr1, "\",")[0]
+			fmt.Println("Output:", str2)
+
+			fmt.Println(action.Steps[0].Outputs)
+			for _, output := range action.Steps[0].Outputs {
+				fmt.Println(output)
+				// ToUpper the key because of the case weirdness with ARM outputs
+				if "ID" == strings.ToUpper(output.Key) {
+					err := m.WriteMixinOutputToFile(output.Name, []byte(fmt.Sprintf("%v", str2)))
+					if err != nil {
+						return errors.Wrapf(err, "unable to write output '%s'", output.Name)
+					} else {
+						fmt.Println(output.Name, []byte(fmt.Sprintf("%v", string(str2))))
+					}
+				}
+			}
+		}
+	}
+
 	return err
 }
