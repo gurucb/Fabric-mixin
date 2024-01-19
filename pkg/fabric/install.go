@@ -1,4 +1,4 @@
-package skeletor
+package fabric
 
 import (
 	"context"
@@ -16,7 +16,7 @@ func (m *Mixin) loadAction(ctx context.Context) (*Action, error) {
 	return &action, err
 }
 
-func (m *Mixin) Execute(ctx context.Context) error {
+func (m *Mixin) Install(ctx context.Context) error {
 	action, err := m.loadAction(ctx)
 	if err != nil {
 		return err
