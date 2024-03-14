@@ -12,25 +12,17 @@ type Action struct {
 	Steps []Step // using UnmarshalYAML so that we don't need a custom type per action
 }
 
-// MarshalYAML converts the action back to a YAML representation
-// install:
-//
-//	fabric:
-//	  ...
-func (a Action) MarshalYAML() (interface{}, error) {
-	return map[string]interface{}{a.Name: a.Steps}, nil
-}
-
-// MakeSteps builds a slice of Step for data to be unmarshaled into.
+// MakeSteps builds a slice of Steps for data to be unmarshaled into.
 func (a Action) MakeSteps() interface{} {
 	return &[]Step{}
 }
 
 // UnmarshalYAML takes any yaml in this form
 // ACTION:
-// - fabric: ...
+// - aws: ...
 // and puts the steps into the Action.Steps field
 func (a *Action) UnmarshalYAML(unmarshal func(interface{}) error) error {
+
 	results, err := builder.UnmarshalAction(unmarshal, a)
 	if err != nil {
 		return err
@@ -48,7 +40,6 @@ func (a *Action) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 func (a Action) GetSteps() []builder.ExecutableStep {
-	// Go doesn't have generics, nothing to see here...
 	steps := make([]builder.ExecutableStep, len(a.Steps))
 	for i := range a.Steps {
 		steps[i] = a.Steps[i]
@@ -57,92 +48,51 @@ func (a Action) GetSteps() []builder.ExecutableStep {
 	return steps
 }
 
+var _ builder.ExecutableStep = Step{}
+var _ builder.StepWithOutputs = Step{}
+var _ builder.SuppressesOutput = Step{}
+
 type Step struct {
 	Instruction `yaml:"fabric"`
 }
 
-// Actions is a set of actions, and the steps, passed from Porter.
-type Actions []Action
-
-// UnmarshalYAML takes chunks of a porter.yaml file associated with this mixin
-// and populates it on the current action set.
-// install:
-//
-//	fabric:
-//	  ...
-//	fabric:
-//	  ...
-//
-// upgrade:
-//
-//	fabric:
-//	  ...
-func (a *Actions) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	results, err := builder.UnmarshalAction(unmarshal, Action{})
-	if err != nil {
-		return err
-	}
-
-	for actionName, action := range results {
-		for _, result := range action {
-			s := result.(*[]Step)
-			*a = append(*a, Action{
-				Name:  actionName,
-				Steps: *s,
-			})
-		}
-	}
-	return nil
-}
-
-var _ builder.HasOrderedArguments = Instruction{}
-var _ builder.ExecutableStep = Instruction{}
-var _ builder.StepWithOutputs = Instruction{}
-
 type Instruction struct {
-	Outputs        []Output `yaml:"outputs,omitempty"`
-	SuppressOutput bool     `yaml:"suppress-output,omitempty"`
-	// https://release-v1.porter.sh/mixins/exec/#ignore-error
-	builder.IgnoreErrorHandler `yaml:"ignoreError,omitempty"`
-	FabricFields               `yaml:",inline"`
-}
-type FabricFields struct {
-	Token       string `yaml:"token"`
-	DisplayName string `yaml:"displayName,omitempty"`
-	Type        string `yaml:"type,omitempty"`
-	Description string `yaml:"description,omitempty"`
-	CapacityId  string `yaml:"capacityId,omitempty"`
-	WorkspaceId string `yaml:"workspaceid,omitempty"`
-	ItemId      string `yaml:"itemid,omitempty"`
-	Definition  string `yaml:"definition,omitempty"`
+	Description    string        `yaml:"description"`
+	Service        string        `yaml:"group"`
+	Operation      string        `yaml:"operation"`
+	Arguments      []string      `yaml:"arguments,omitempty"`
+	Flags          builder.Flags `yaml:"flags,omitempty"`
+	Outputs        []Output      `yaml:"outputs,omitempty"`
+	SuppressOutput bool          `yaml:"suppress-output,omitempty"`
 }
 
-func (s Instruction) GetCommand() string {
-	return "fabric"
+func (s Step) GetCommand() string {
+	return "CompositeSolution"
 }
 
-func (s Instruction) GetWorkingDir() string {
+func (s Step) GetWorkingDir() string {
 	return ""
 }
 
-func (s Instruction) GetArguments() []string {
-	return nil
+func (s Step) GetArguments() []string {
+	args := make([]string, 0, len(s.Arguments)+2)
+
+	// Specify the Service and Operation
+	args = append(args, s.Service)
+	args = append(args, s.Operation)
+
+	// Append the positional arguments
+	args = append(args, s.Arguments...)
+
+	return args
 }
 
-func (s Instruction) GetSuffixArguments() []string {
-	return nil
+func (s Step) GetFlags() builder.Flags {
+	// Always request json formatted output
+	return append(s.Flags, builder.NewFlag("output", "json"))
 }
 
-func (s Instruction) GetFlags() builder.Flags {
-	return nil
-}
-
-func (s Instruction) SuppressesOutput() bool {
-	return s.SuppressOutput
-}
-
-func (s Instruction) GetOutputs() []builder.Output {
-	// Go doesn't have generics, nothing to see here...
+func (s Step) GetOutputs() []builder.Output {
 	outputs := make([]builder.Output, len(s.Outputs))
 	for i := range s.Outputs {
 		outputs[i] = s.Outputs[i]
@@ -150,20 +100,15 @@ func (s Instruction) GetOutputs() []builder.Output {
 	return outputs
 }
 
+func (s Step) SuppressesOutput() bool {
+	return s.SuppressOutput
+}
+
 var _ builder.OutputJsonPath = Output{}
-var _ builder.OutputFile = Output{}
-var _ builder.OutputRegex = Output{}
 
 type Output struct {
-	Name string `yaml:"name"`
-	Key  string `yaml:"key"`
-
-	// See https://porter.sh/mixins/exec/#outputs
-	// TODO: If your mixin doesn't support these output types, you can remove these and the interface assertions above, and from #/definitions/outputs in schema.json
-	// JsonPath string `yaml:"jsonPath,omitempty"`
-	// FilePath string `yaml:"path,omitempty"`
-	// Regex    string `yaml:"regex,omitempty"`
-
+	Name     string `yaml:"name"`
+	JsonPath string `yaml:"jsonPath"`
 }
 
 func (o Output) GetName() string {
@@ -171,13 +116,5 @@ func (o Output) GetName() string {
 }
 
 func (o Output) GetJsonPath() string {
-	return ""
-}
-
-func (o Output) GetFilePath() string {
-	return ""
-}
-
-func (o Output) GetRegex() string {
-	return ""
+	return o.JsonPath
 }

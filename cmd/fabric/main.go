@@ -15,6 +15,11 @@ import (
 
 func main() {
 	run := func() int {
+		// Background returns a non-nil, empty [Context]. It is never canceled, has no
+		// values, and has no deadline. It is typically used by the main function,
+		// initialization, and tests, and as the top-level Context for incoming
+		// requests.
+		// Refernce: https://cs.opensource.google/go/go/+/refs/tags/go1.21.6:src/context/context.go;l=68
 		ctx := context.Background()
 		m := fabric.New()
 		ctx, err := m.ConfigureLogging(ctx)
@@ -54,7 +59,7 @@ func main() {
 func buildRootCommand(m *fabric.Mixin, in io.Reader) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:  "fabric",
-		Long: "A skeleton mixin to use for building other mixins for porter 👩🏽‍✈️",
+		Long: "A fabric mixin",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Enable swapping out stdout/stderr for testing
 			m.In = in
