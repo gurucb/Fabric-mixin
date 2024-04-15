@@ -2,6 +2,7 @@ package fabric
 
 import (
 	"get.porter.sh/porter/pkg/exec/builder"
+	"get.porter.sh/porter/pkg/runtime"
 )
 
 var _ builder.ExecutableAction = Action{}
@@ -50,7 +51,8 @@ func (a Action) GetSteps() []builder.ExecutableStep {
 }
 
 var _ builder.ExecutableStep = Step{}
-var _ builder.StepWithOutputs = Step{}
+
+// var _ builder.StepWithOutputs = Step{}
 var _ builder.SuppressesOutput = Step{}
 
 type Step struct {
@@ -58,33 +60,25 @@ type Step struct {
 }
 
 type Instruction struct {
-	// Description  string      `yaml:"description",omitempty`
-	Licenses          interface{}   `yaml:"license"`
-	Dependencies      interface{}   `yaml:"dependencies"`
-	SupportedRegions  []string      `yaml:"supportedRegions"`
-	TargetEnvironment string        `yaml:"targetEnvironment"`
-	PackageId         string        `yaml:"packageId"`
-	Arguments         []string      `yaml:"arguments,omitempty"`
-	Flags             builder.Flags `yaml:"flags,omitempty"`
-	// Outputs        []Output      `yaml:"outputs,omitempty"`
-	// SuppressOutput bool          `yaml:"suppress-output,omitempty"`
-}
+	Name        string   `yaml:"name"`
+	Description string   `yaml:"description"`
+	Service     string   `yaml:"group"`
+	Operation   string   `yaml:"operation"`
+	Arguments   []string `yaml:"arguments,omitempty"`
 
-type License struct {
-	SKUList []Skus `yaml:"license"`
-}
-type Skus struct {
-	SKUs     []string `yaml:"skus",omitempty`
-	Operator string   `yaml:"operator",omitempty`
-}
-type Depends struct {
-	DependencyList []Dependency `yaml:"dependencies"`
-}
-type Dependency struct {
-	Type                        string `yaml:"type"`
-	Query                       string `yaml:"query"`
-	dependencyCheckCondition    string `yaml:"dependencyCheckCondition"`
-	dependencyCheckResultAction string `yaml:"dependencyCheckResultAction"`
+	// Useful when the CLI you are calling wants some arguments to come after flags
+	// Arguments are passed first, then Flags, then SuffixArguments.
+
+	Flags          builder.Flags `yaml:"flags,omitempty"`
+	Outputs        []Output      `yaml:"outputs,omitempty"`
+	SuppressOutput bool          `yaml:"suppress-output,omitempty"`
+
+	// Allow the user to ignore some errors
+	// Adds the ignoreError functionality from the exec mixin
+	// https://release-v1.porter.sh/mixins/exec/#ignore-error
+	builder.IgnoreErrorHandler `yaml:"ignoreError,omitempty"`
+
+	RuntimeConfig runtime.RuntimeConfig
 }
 
 func (s Step) GetCommand() string {
@@ -96,17 +90,17 @@ func (s Step) GetWorkingDir() string {
 }
 
 func (s Step) GetArguments() []string {
-	// args := make([]string, 0, len(s.Arguments)+2)
+	args := make([]string, 0, len(s.Arguments)+2)
 
-	// // Specify the Service and Operation
-	// args = append(args, s.Service)
-	// args = append(args, s.Operation)
+	// Specify the Service and Operation
+	args = append(args, s.Service)
+	args = append(args, s.Operation)
 
-	// // Append the positional arguments
-	// args = append(args, s.Arguments...)
+	// Append the positional arguments
+	args = append(args, s.Arguments...)
 
-	// return args
-	return nil
+	return args
+
 }
 
 func (s Step) GetFlags() builder.Flags {
@@ -115,14 +109,14 @@ func (s Step) GetFlags() builder.Flags {
 	return s.Flags
 }
 
-func (s Step) GetOutputs() []builder.Output {
-	// outputs := make([]builder.Output, len(s.Outputs))
-	// for i := range s.Outputs {
-	// 	outputs[i] = s.Outputs[i]
-	// }
-	// return outputs
-	return nil
-}
+// func (s Step) GetOutputs() []builder.Output {
+// outputs := make([]builder.Output, len(s.Outputs))
+// for i := range s.Outputs {
+// 	outputs[i] = s.Outputs[i]
+// }
+// return outputs
+// 	return nil
+// }
 
 func (s Step) SuppressesOutput() bool {
 	// return s.SuppressOutput
