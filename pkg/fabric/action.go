@@ -60,15 +60,11 @@ type Step struct {
 }
 
 type Instruction struct {
-	Name        string   `yaml:"name"`
-	Description string   `yaml:"description"`
-	Service     string   `yaml:"group"`
-	Operation   string   `yaml:"operation"`
-	Arguments   []string `yaml:"arguments,omitempty"`
-
-	// Useful when the CLI you are calling wants some arguments to come after flags
-	// Arguments are passed first, then Flags, then SuffixArguments.
-
+	Name           string        `yaml:"name"`
+	Description    string        `yaml:"description"`
+	Service        string        `yaml:"group"`
+	Operation      string        `yaml:"operation"`
+	Arguments      []string      `yaml:"arguments,omitempty"`
 	Flags          builder.Flags `yaml:"flags,omitempty"`
 	Outputs        []Output      `yaml:"outputs,omitempty"`
 	SuppressOutput bool          `yaml:"suppress-output,omitempty"`
@@ -77,12 +73,11 @@ type Instruction struct {
 	// Adds the ignoreError functionality from the exec mixin
 	// https://release-v1.porter.sh/mixins/exec/#ignore-error
 	builder.IgnoreErrorHandler `yaml:"ignoreError,omitempty"`
-
-	RuntimeConfig runtime.RuntimeConfig
+	RuntimeConfig              runtime.RuntimeConfig
 }
 
 func (s Step) GetCommand() string {
-	return "CompositeSolution"
+	return "FabricCompositeSolution"
 }
 
 func (s Step) GetWorkingDir() string {
