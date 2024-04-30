@@ -36,7 +36,6 @@ func (m *Mixin) loadAction(ctx context.Context) (*Action, error) {
 }
 
 func (m *Mixin) Execute(ctx context.Context) error {
-	fmt.Println("Entering Execute method..")
 	action, err := m.loadAction(ctx)
 	if err != nil {
 		return err
@@ -56,29 +55,19 @@ func (m *Mixin) Execute(ctx context.Context) error {
 	}
 
 	if _, err := os.Stat(outFilePath); os.IsNotExist(err) {
-		fmt.Println("File does not exist")
+		fmt.Println("Output file does not exist")
 		return err
 	}
 
-	fmt.Println("File exists")
-	fmt.Println("ExecuteSingleStepAction OUTPUT", output)
+	fmt.Println("Output:")
+	fmt.Println(output)
 
 	executedStep := action.Steps[0]
-
 	outputData, err := os.ReadFile(outFilePath)
-
-	fmt.Println("OUTPUT:", string(outputData), len(outputData))
-
 	if len(executedStep.Instruction.Outputs) > 0 {
-
 		var instructionOutput = InstructionOutput{Name: executedStep.Instruction.Name, Outputs: executedStep.Instruction.Outputs}
-
-		//read from file
-
 		builder.ProcessJsonPathOutputs(ctx, m.RuntimeConfig, instructionOutput, string(outputData))
-
 	}
-
 	return err
 }
 
@@ -88,7 +77,6 @@ type InstructionOutput struct {
 }
 
 func (s InstructionOutput) GetOutputs() []builder.Output {
-	//	Go doesn't have generics, nothing to see here...
 	outputs := make([]builder.Output, len(s.Outputs))
 	for i := range s.Outputs {
 		outputs[i] = s.Outputs[i]
