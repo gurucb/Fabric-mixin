@@ -28,27 +28,20 @@ type HasCustomDashes interface {
 func (m *Mixin) loadAction(ctx context.Context) (*Action, error) {
 	var action Action
 	err := builder.LoadAction(ctx, m.RuntimeConfig, "", func(contents []byte) (interface{}, error) {
-		fmt.Println("Contents: ")
 		err := yaml.Unmarshal(contents, &action)
 		return &action, err
 	})
 	return &action, err
 }
-
 func (m *Mixin) Execute(ctx context.Context) error {
 	action, err := m.loadAction(ctx)
 	if err != nil {
 		return err
 	}
-
 	var output string
 	uuid := uuid.New()
 	var outFilePath = "/cnab/app/" + uuid.String()
-
 	action.Steps[0].Flags = append(action.Steps[0].Flags, builder.NewFlag("filePath", outFilePath))
-
-	fmt.Println(action.Steps[0].Flags)
-
 	output, err = builder.ExecuteSingleStepAction(ctx, m.RuntimeConfig, action)
 	if err != nil {
 		return err
